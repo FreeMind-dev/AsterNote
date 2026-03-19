@@ -82,6 +82,9 @@ jobs:
       - name: Install DMG helper
         run: npm install --no-save dmg-license
 
+      - name: Generate macOS icon
+        run: npm run generate:icons:mac
+
       - name: Build macOS packages
         run: npm run dist:mac
 

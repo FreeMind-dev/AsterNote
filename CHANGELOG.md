@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.1] - 2026-03-19
+
+### Fixed
+
+- Added macOS `.icns` generation to the release pipeline so GitHub Actions can build `.dmg` and `.zip` packages reliably
+- Improved release automation metadata for tagged builds
+
 ## [0.1.0] - 2026-03-19
 
 ### Added
@@ -25,4 +32,3 @@ All notable changes to this project will be documented in this file.
 
 - Removed local test API keys from persisted app settings
 - Cleared local recent files and AI session history before repository publication
-

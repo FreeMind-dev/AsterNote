@@ -2,7 +2,7 @@
   "name": "asternote",
   "productName": "AsterNote",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "UNLICENSED",
   "author": "AsterNote Team <packaging@asternote.invalid>",
   "description": "A local-first desktop Markdown editor with AI assistance, OpenAI-compatible model providers, web search, and an integrated terminal.",
@@ -24,6 +24,7 @@
     "dist:mac": "npm run build && electron-builder --publish never --mac dmg zip",
     "electron": "electron .",
     "generate:icons": "bash ./scripts/generate-icons.sh",
+    "generate:icons:mac": "bash ./scripts/generate-mac-icon.sh",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -96,6 +97,7 @@
       }
     ],
     "mac": {
+      "icon": "build/icons/icon.icns",
       "target": [
         "dmg",
         "zip"
