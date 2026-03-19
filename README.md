@@ -2,6 +2,8 @@
 
 AsterNote is a local-first desktop Markdown editor built with Electron, Vite, React, TypeScript, and TipTap. It focuses on a document-first writing workflow with rich-text editing, source mode, integrated AI, configurable web search, and a bottom terminal.
 
+License: MIT
+
 ## Features
 
 - Rich-text Markdown editing with source-mode toggle

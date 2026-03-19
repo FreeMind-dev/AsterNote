@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.2] - 2026-03-19
+
+### Changed
+
+- Replaced the repository license with MIT
+- Updated repository documentation and package metadata to match the MIT license
+
 ## [0.1.1] - 2026-03-19
 
 ### Fixed
