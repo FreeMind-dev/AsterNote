@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.3] - 2026-03-20
+
+### Fixed
+
+- Restored full-width editor layout while keeping soft wrapping enabled for long Markdown lines
+- Removed legacy seeded AI provider defaults so fresh installs start with an empty provider state
+- Standardized desktop user-data loading to the canonical `AsterNote` directory and migrated legacy settings safely
+- Improved terminal behavior and rendering with automatic panel close on shell exit, UTF-8 Windows shell bootstrap, and platform-specific terminal typography
+
+### Changed
+
+- Refined the AI sidebar session/history controls and empty-state wording
+- Refreshed application icons and packaging metadata for cleaner desktop integration
+
 ## [0.1.2] - 2026-03-19
 
 ### Changed

@@ -46,5 +46,6 @@ contextBridge.exposeInMainWorld('quietmark', {
     setTitle: (title) => ipcRenderer.send('quietmark:window:set-title', title),
     onCommand: (callback) => subscribe('quietmark:command', callback),
     onFilesOpened: (callback) => subscribe('quietmark:files-opened', callback),
+    consumePendingFilesOpened: () => ipcRenderer.invoke('quietmark:files:consume-pending-opened'),
   },
 });

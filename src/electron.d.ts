@@ -214,6 +214,7 @@ export interface QuietMarkAPI {
     setTitle: (title: string) => void;
     onCommand: (callback: (payload: { command: string }) => void) => () => void;
     onFilesOpened: (callback: (entries: FileOpenEntry[]) => void) => () => void;
+    consumePendingFilesOpened: () => Promise<FileOpenEntry[]>;
   };
 }
 

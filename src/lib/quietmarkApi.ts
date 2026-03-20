@@ -126,6 +126,7 @@ const browserFallbackApi: QuietMarkAPI = {
     },
     onCommand: () => noopUnsubscribe(),
     onFilesOpened: () => noopUnsubscribe(),
+    consumePendingFilesOpened: async () => [],
   },
 };
 

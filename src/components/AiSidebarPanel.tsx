@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { AIProviderConfig, SearchHit, UILanguage } from '../electron';
 import { getUiText } from '../lib/uiText';
@@ -7,9 +7,9 @@ import {
   ArrowUp,
   Bot,
   Globe,
+  MessageSquareText,
   Plus,
   Search,
-  Settings2,
   Sparkles,
   TextQuote,
 } from './icons';
@@ -35,7 +35,6 @@ interface AiSidebarPanelProps {
   onQuickAction: (action: 'polish' | 'summarize' | 'translate' | 'continue') => void;
   onApplyAiReplace: (content: string) => void;
   onApplyAiAppend: (content: string) => void;
-  onOpenSettings: () => void;
 }
 
 function SourceList({ sources, uiLanguage }: { sources: SearchHit[]; uiLanguage: UILanguage }) {
@@ -78,9 +77,10 @@ export function AiSidebarPanel({
   onQuickAction,
   onApplyAiReplace,
   onApplyAiAppend,
-  onOpenSettings,
 }: AiSidebarPanelProps) {
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  const historyRef = useRef<HTMLDivElement | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const ui = getUiText(uiLanguage);
 
   useEffect(() => {
@@ -89,9 +89,22 @@ export function AiSidebarPanel({
   }, [focusAiInputToken]);
 
   const enabledProviders = useMemo(
-    () => providers.filter((provider) => provider.enabled),
+    () => providers.filter((provider) => provider.enabled && provider.hasApiKey),
     [providers]
   );
+
+  useEffect(() => {
+    if (!historyOpen) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!historyRef.current?.contains(event.target as Node)) {
+        setHistoryOpen(false);
+      }
+    };
+
+    window.addEventListener('mousedown', handlePointerDown);
+    return () => window.removeEventListener('mousedown', handlePointerDown);
+  }, [historyOpen]);
 
   return (
     <div className="qm-ai-panel">
@@ -113,7 +126,7 @@ export function AiSidebarPanel({
           })}
         </div>
 
-        <div className="qm-ai-session-actions">
+        <div ref={historyRef} className="qm-ai-session-actions">
           <button
             type="button"
             className="qm-icon-button qm-icon-button--small"
@@ -126,12 +139,34 @@ export function AiSidebarPanel({
           <button
             type="button"
             className="qm-icon-button qm-icon-button--small"
-            onClick={onOpenSettings}
-            title={ui.ai.aiSettings}
-            aria-label={ui.ai.aiSettings}
+            onClick={() => setHistoryOpen((current) => !current)}
+            title={ui.ai.history}
+            aria-label={ui.ai.history}
           >
-            <Settings2 size={13} />
+            <MessageSquareText size={13} />
           </button>
+
+          {historyOpen && (
+            <div className="qm-ai-history-menu">
+              {sessions.map((session) => {
+                const sessionLabel = session.messages.length === 0 ? ui.ai.emptyTitle : session.title;
+                return (
+                  <button
+                    key={session.id}
+                    type="button"
+                    className={`qm-ai-history-item ${activeSessionId === session.id ? 'is-active' : ''}`}
+                    onClick={() => {
+                      onSelectAiSession(session.id);
+                      setHistoryOpen(false);
+                    }}
+                    title={sessionLabel}
+                  >
+                    {sessionLabel}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
@@ -218,7 +253,7 @@ export function AiSidebarPanel({
 
         <div className="qm-ai-composer-toolbar">
           <div className="qm-ai-composer-toolbar-main">
-            <label className="qm-ai-provider-select">
+            <label className={`qm-ai-provider-select ${enabledProviders.length === 0 ? 'is-empty' : ''}`}>
               <select
                 value={selectedProviderId}
                 onChange={(event) => onSelectProvider(event.target.value)}
@@ -240,7 +275,6 @@ export function AiSidebarPanel({
               type="button"
               className={`qm-ai-utility-button ${useWebSearch ? 'is-active' : ''}`}
               onClick={onToggleWebSearch}
-              disabled={!webSearchConfigured}
               title={webSearchConfigured ? ui.ai.toggleWebSearch : ui.ai.configureWebSearchFirst}
               aria-label={webSearchConfigured ? ui.ai.toggleWebSearch : ui.ai.configureWebSearchFirst}
             >

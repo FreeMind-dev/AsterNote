@@ -106,6 +106,14 @@ function isWebSearchReady(settings: AppSettings | null) {
   return true;
 }
 
+function getPreferredProviderId(settings: AppSettings | null) {
+  const configuredProviders = (settings?.aiProviders || []).filter(
+    (provider) => provider.enabled && provider.hasApiKey
+  );
+
+  return configuredProviders.find((provider) => provider.isDefault)?.id || configuredProviders[0]?.id || '';
+}
+
 function normalizeDroppedPath(file: File) {
   const nativeFile = file as File & { path?: string };
   return typeof nativeFile.path === 'string' ? nativeFile.path : '';
@@ -436,10 +444,7 @@ function App() {
   const loadSettings = useCallback(async () => {
     const next = await quietmark.settings.get().catch(() => DEFAULT_SETTINGS_FALLBACK);
     setSettings(next);
-    const defaultProvider =
-      next.aiProviders.find((provider) => provider.isDefault && provider.enabled) ||
-      next.aiProviders.find((provider) => provider.enabled);
-    setSelectedProviderId(defaultProvider?.id || '');
+    setSelectedProviderId(getPreferredProviderId(next));
     setUseWebSearch(false);
     return next;
   }, [quietmark]);
@@ -493,6 +498,15 @@ function App() {
     setSettingsSection(section);
     setShowSettings(true);
   }, []);
+
+  const handleToggleWebSearch = useCallback(() => {
+    if (!isWebSearchReady(settings)) {
+      openSettingsSection('webSearch');
+      return;
+    }
+
+    setUseWebSearch((current) => !current);
+  }, [openSettingsSection, settings]);
 
   const openEntries = useCallback(
     (entries: FileOpenEntry[]) => {
@@ -1627,6 +1641,16 @@ function App() {
   }, [handleCommand, openEntries, quietmark]);
 
   useEffect(() => {
+    void quietmark.app.consumePendingFilesOpened()
+      .then((entries) => {
+        if (entries.length > 0) {
+          openEntries(entries);
+        }
+      })
+      .catch(() => {});
+  }, [openEntries, quietmark]);
+
+  useEffect(() => {
     if (!activeTab) {
       quietmark.app.setTitle('AsterNote');
       return;
@@ -1820,7 +1844,7 @@ function App() {
           onSelectProvider={setSelectedProviderId}
           useWebSearch={useWebSearch}
           webSearchConfigured={isWebSearchReady(settings)}
-          onToggleWebSearch={() => setUseWebSearch((current) => !current)}
+          onToggleWebSearch={handleToggleWebSearch}
           onSelectAiSession={(sessionId) => {
             setActiveAiSessionId(sessionId);
             setFocusAiInputToken((value) => value + 1);
@@ -1885,19 +1909,13 @@ function App() {
           const saved = await quietmark.settings.update(nextSettings);
           setSettings(saved);
           setUseWebSearch((current) => current && isWebSearchReady(saved));
-          const nextDefault =
-            saved.aiProviders.find((provider) => provider.enabled && provider.isDefault) ||
-            saved.aiProviders.find((provider) => provider.enabled);
-          setSelectedProviderId(nextDefault?.id || '');
+          setSelectedProviderId(getPreferredProviderId(saved));
         }}
         onReset={async () => {
           const next = await quietmark.settings.reset();
           setSettings(next);
           setUseWebSearch(false);
-          const nextDefault =
-            next.aiProviders.find((provider) => provider.enabled && provider.isDefault) ||
-            next.aiProviders.find((provider) => provider.enabled);
-          setSelectedProviderId(nextDefault?.id || '');
+          setSelectedProviderId(getPreferredProviderId(next));
         }}
         onValidateProvider={(provider) => quietmark.ai.validateProvider(provider)}
         onValidateWebSearch={(config) => quietmark.ai.validateWebSearch(config)}

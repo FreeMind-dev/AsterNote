@@ -270,7 +270,6 @@ export function RightSidebar({
                 onQuickAction={onQuickAction}
                 onApplyAiReplace={onApplyAiReplace}
                 onApplyAiAppend={onApplyAiAppend}
-                onOpenSettings={onOpenSettings}
               />
             )}
           </div>

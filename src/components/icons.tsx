@@ -97,10 +97,10 @@ export function InlineFormula(props: IconProps) {
   return (
     <IconBase {...props}>
       <text
-        x="9.6"
-        y="16.8"
+        x="9.4"
+        y="17.2"
         textAnchor="middle"
-        fontSize="14.6"
+        fontSize="16.4"
         fontFamily="'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Consolas, monospace"
         fill="currentColor"
         stroke="none"
@@ -108,10 +108,10 @@ export function InlineFormula(props: IconProps) {
         x
       </text>
       <text
-        x="15.6"
-        y="9.6"
+        x="15.9"
+        y="9.4"
         textAnchor="middle"
-        fontSize="8.4"
+        fontSize="10.2"
         fontFamily="'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Consolas, monospace"
         fill="currentColor"
         stroke="none"

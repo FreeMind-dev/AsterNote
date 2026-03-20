@@ -14,6 +14,38 @@ interface TerminalPanelProps {
   onClose: () => void;
 }
 
+function resolveTerminalTypography() {
+  const userAgent = typeof navigator === 'undefined' ? '' : navigator.userAgent;
+
+  if (/Windows/i.test(userAgent)) {
+    return {
+      fontFamily:
+        'Consolas, "Lucida Console", "Courier New", "Sarasa Mono SC", "Microsoft YaHei UI", monospace',
+      fontSize: 14,
+      letterSpacing: 0,
+      lineHeight: 1.32,
+    };
+  }
+
+  if (/Macintosh|Mac OS X/i.test(userAgent)) {
+    return {
+      fontFamily:
+        '"SFMono-Regular", Menlo, Monaco, "Sarasa Mono SC", "PingFang SC", monospace',
+      fontSize: 13,
+      letterSpacing: 0,
+      lineHeight: 1.35,
+    };
+  }
+
+  return {
+    fontFamily:
+      '"Noto Sans Mono", "Noto Sans Mono CJK SC", "Sarasa Mono SC", "Liberation Mono", monospace',
+    fontSize: 13,
+    letterSpacing: 0,
+    lineHeight: 1.35,
+  };
+}
+
 export function TerminalPanel({ visible, api, documentPath, onClose }: TerminalPanelProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const terminalRef = useRef<Terminal | null>(null);
@@ -21,6 +53,7 @@ export function TerminalPanel({ visible, api, documentPath, onClose }: TerminalP
   const sessionIdRef = useRef<string | null>(null);
   const [session, setSession] = useState<TerminalSessionInfo | null>(null);
   const ui = getUiText(getDocumentUiLanguage());
+  const terminalTypography = resolveTerminalTypography();
 
   useEffect(() => {
     if (!visible || !hostRef.current || terminalRef.current) {
@@ -30,9 +63,10 @@ export function TerminalPanel({ visible, api, documentPath, onClose }: TerminalP
     const terminal = new Terminal({
       convertEol: true,
       cursorBlink: true,
-      fontFamily: '"SFMono-Regular", Consolas, "Liberation Mono", monospace',
-      fontSize: 13,
-      lineHeight: 1.35,
+      fontFamily: terminalTypography.fontFamily,
+      fontSize: terminalTypography.fontSize,
+      letterSpacing: terminalTypography.letterSpacing,
+      lineHeight: terminalTypography.lineHeight,
       scrollback: 4000,
       theme: {
         background: '#0f1720',
@@ -89,7 +123,7 @@ export function TerminalPanel({ visible, api, documentPath, onClose }: TerminalP
       terminalRef.current = null;
       fitAddonRef.current = null;
     };
-  }, [api, ui.terminal, visible]);
+  }, [api, onClose, terminalTypography.fontFamily, terminalTypography.fontSize, terminalTypography.letterSpacing, terminalTypography.lineHeight, ui.terminal, visible]);
 
   useEffect(() => {
     if (!visible) {
@@ -106,13 +140,16 @@ export function TerminalPanel({ visible, api, documentPath, onClose }: TerminalP
       terminalRef.current?.writeln(`\r\n${ui.terminal.exitedWithCode(exitCode, signal)}\r\n`);
       sessionIdRef.current = null;
       setSession(null);
+      window.setTimeout(() => {
+        onClose();
+      }, 120);
     });
 
     return () => {
       unsubscribeData();
       unsubscribeExit();
     };
-  }, [api, ui.terminal, visible]);
+  }, [api, onClose, ui.terminal, visible]);
 
   useEffect(() => {
     if (!visible || !terminalRef.current) {

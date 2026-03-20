@@ -2,7 +2,7 @@
   "name": "asternote",
   "productName": "AsterNote",
   "private": true,
-  "version": "0.1.2",
+  "version": "0.1.3",
   "license": "MIT",
   "author": "AsterNote Team <packaging@asternote.invalid>",
   "description": "A local-first desktop Markdown editor with AI assistance, OpenAI-compatible model providers, web search, and an integrated terminal.",
@@ -94,10 +94,43 @@
         "description": "Markdown file",
         "role": "Editor",
         "mimeType": "text/markdown"
+      },
+      {
+        "ext": "mdown",
+        "name": "Markdown Document",
+        "description": "Markdown file",
+        "role": "Editor",
+        "mimeType": "text/markdown"
+      },
+      {
+        "ext": "mkd",
+        "name": "Markdown Document",
+        "description": "Markdown file",
+        "role": "Editor",
+        "mimeType": "text/markdown"
       }
     ],
     "mac": {
       "icon": "build/icons/icon.icns",
+      "category": "public.app-category.productivity",
+      "extendInfo": {
+        "CFBundleDocumentTypes": [
+          {
+            "CFBundleTypeName": "Markdown Document",
+            "CFBundleTypeRole": "Editor",
+            "LSHandlerRank": "Owner",
+            "CFBundleTypeExtensions": [
+              "md",
+              "markdown",
+              "mdown",
+              "mkd"
+            ],
+            "LSItemContentTypes": [
+              "net.daringfireball.markdown"
+            ]
+          }
+        ]
+      },
       "target": [
         "dmg",
         "zip"
@@ -109,6 +142,10 @@
       "synopsis": "Desktop Markdown editor with AI and web-assisted writing tools",
       "description": "AsterNote is a local-first desktop Markdown editor with a rich writing surface, source mode, a collapsible tools sidebar, integrated AI, configurable web search, and a bottom terminal.",
       "executableName": "asternote",
+      "mimeTypes": [
+        "text/markdown",
+        "text/x-markdown"
+      ],
       "target": [
         "AppImage",
         "deb"
@@ -117,6 +154,7 @@
       "desktop": {
         "entry": {
           "StartupWMClass": "AsterNote",
+          "MimeType": "text/markdown;text/x-markdown;",
           "Keywords": "Markdown;Editor;Writing;AI;Terminal;Search;"
         }
       }
@@ -129,7 +167,7 @@
     },
     "nsis": {
       "oneClick": false,
-      "perMachine": false,
+      "perMachine": true,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": "always",
       "shortcutName": "AsterNote"

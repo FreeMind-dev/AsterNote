@@ -166,8 +166,8 @@ export function SettingsModal({
               {
                 id,
                 name: ui.settings.customProvider,
-                baseUrl: 'https://api.openai.com/v1',
-                model: 'gpt-4.1-mini',
+                baseUrl: '',
+                model: '',
                 enabled: true,
                 isDefault: current.aiProviders.length === 0,
                 apiKey: '',
@@ -324,6 +324,7 @@ export function SettingsModal({
                         <span>{ui.settings.providerName}</span>
                         <input
                           value={provider.name}
+                          placeholder={ui.settings.providerNamePlaceholder}
                           onChange={(event) =>
                             updateProvider(provider.id, { name: event.target.value })
                           }
@@ -354,6 +355,7 @@ export function SettingsModal({
                       <span>{ui.settings.baseUrl}</span>
                       <input
                         value={provider.baseUrl}
+                        placeholder={ui.settings.baseUrlPlaceholder}
                         onChange={(event) =>
                           updateProvider(provider.id, { baseUrl: event.target.value })
                         }
@@ -365,6 +367,7 @@ export function SettingsModal({
                         <span>{ui.settings.model}</span>
                         <input
                           value={provider.model}
+                          placeholder={ui.settings.modelPlaceholder}
                           onChange={(event) =>
                             updateProvider(provider.id, { model: event.target.value })
                           }

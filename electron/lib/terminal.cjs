@@ -15,7 +15,23 @@ function resolveShellLaunch() {
 
   if (process.platform === 'win32') {
     const command = process.env.COMSPEC || 'powershell.exe';
-    const args = /cmd\.exe$/i.test(command) ? [] : ['-NoLogo'];
+    const isCmd = /cmd\.exe$/i.test(command);
+    const isPowerShell = /(powershell|pwsh)(?:\.exe)?$/i.test(command);
+    const args = isCmd
+      ? ['/K', 'chcp 65001>nul']
+      : isPowerShell
+        ? [
+            '-NoLogo',
+            '-NoExit',
+            '-Command',
+            [
+              '[Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false)',
+              '[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)',
+              '$OutputEncoding = [Console]::OutputEncoding',
+              'try { chcp 65001 > $null } catch {}',
+            ].join('; '),
+          ]
+        : [];
     return {
       command,
       args,
@@ -84,6 +100,7 @@ class TerminalManager {
         ...process.env,
         TERM: process.env.TERM || 'xterm-256color',
         COLORTERM: process.env.COLORTERM || 'truecolor',
+        PYTHONUTF8: process.platform === 'win32' ? '1' : process.env.PYTHONUTF8,
       },
       stdio: 'pipe',
     });

@@ -18,6 +18,7 @@ const {
 
 const PRODUCT_NAME = 'AsterNote';
 const PRODUCT_DESCRIPTION = 'A luminous desktop Markdown editor with AI and web-assisted writing tools.';
+const LEGACY_USER_DATA_DIR_NAMES = ['asternote'];
 
 const DEFAULT_SETTINGS = {
   theme: 'paper',
@@ -25,35 +26,7 @@ const DEFAULT_SETTINGS = {
   uiLanguage: 'en',
   defaultViewMode: 'rich',
   recentFiles: [],
-  aiProviders: [
-    {
-      id: 'kimi',
-      name: 'Kimi',
-      baseUrl: 'https://api.moonshot.cn/v1',
-      model: 'kimi-k2.5',
-      apiKey: '',
-      enabled: true,
-      isDefault: true,
-    },
-    {
-      id: 'openai',
-      name: 'OpenAI',
-      baseUrl: 'https://api.openai.com/v1',
-      model: 'gpt-4.1-mini',
-      apiKey: '',
-      enabled: false,
-      isDefault: false,
-    },
-    {
-      id: 'deepseek',
-      name: 'DeepSeek',
-      baseUrl: 'https://api.deepseek.com/v1',
-      model: 'deepseek-chat',
-      apiKey: '',
-      enabled: false,
-      isDefault: false,
-    },
-  ],
+  aiProviders: [],
   webSearch: {
     enabled: false,
     provider: 'brave',
@@ -66,6 +39,24 @@ const DEFAULT_SETTINGS = {
   },
   aiMemory: {
     enabled: true,
+  },
+};
+
+const LEGACY_SEEDED_PROVIDER_SIGNATURES = {
+  kimi: {
+    name: 'Kimi',
+    baseUrl: 'https://api.moonshot.cn/v1',
+    model: 'kimi-k2.5',
+  },
+  openai: {
+    name: 'OpenAI',
+    baseUrl: 'https://api.openai.com/v1',
+    model: 'gpt-4.1-mini',
+  },
+  deepseek: {
+    name: 'DeepSeek',
+    baseUrl: 'https://api.deepseek.com/v1',
+    model: 'deepseek-chat',
   },
 };
 
@@ -276,6 +267,25 @@ const MAIN_UI_TEXT = {
   },
 };
 
+function canonicalUserDataPath() {
+  return path.join(app.getPath('appData'), PRODUCT_NAME);
+}
+
+function legacyUserDataPaths() {
+  return LEGACY_USER_DATA_DIR_NAMES
+    .map((name) => path.join(app.getPath('appData'), name))
+    .filter((dirPath, index, list) => list.indexOf(dirPath) === index && dirPath !== canonicalUserDataPath());
+}
+
+function configureUserDataPath() {
+  const targetPath = canonicalUserDataPath();
+  if (app.getPath('userData') !== targetPath) {
+    app.setPath('userData', targetPath);
+  }
+}
+
+configureUserDataPath();
+
 function resolveUiLanguage(language) {
   return language === 'zh-CN' ? 'zh-CN' : 'en';
 }
@@ -285,6 +295,7 @@ function getMainUi(language = loadSettings().uiLanguage) {
 }
 
 let mainWindow = null;
+let pendingOpenedFilePaths = [];
 const terminalManager = new TerminalManager({
   sendData(payload) {
     if (!mainWindow || mainWindow.isDestroyed()) return;
@@ -298,6 +309,53 @@ const terminalManager = new TerminalManager({
 
 function settingsPath() {
   return path.join(app.getPath('userData'), 'asternote-settings.json');
+}
+
+function aiSessionStorePath(userDataPath = app.getPath('userData')) {
+  return path.join(userDataPath, 'asternote-ai-sessions.json');
+}
+
+function isMarkdownFilePath(filePath) {
+  if (!filePath || typeof filePath !== 'string') return false;
+  const ext = path.extname(filePath).toLowerCase();
+  if (!['.md', '.markdown', '.mdown', '.mkd'].includes(ext)) return false;
+
+  try {
+    return fs.existsSync(filePath) && fs.statSync(filePath).isFile();
+  } catch {
+    return false;
+  }
+}
+
+function normalizeOpenableFilePath(filePath) {
+  if (!filePath || typeof filePath !== 'string') return '';
+  const resolved = path.resolve(filePath);
+  return isMarkdownFilePath(resolved) ? resolved : '';
+}
+
+function extractMarkdownPathsFromArgv(argv = []) {
+  return argv
+    .slice(1)
+    .filter((arg) => typeof arg === 'string' && !arg.startsWith('-'))
+    .map(normalizeOpenableFilePath)
+    .filter(Boolean);
+}
+
+function queueOpenedFilePaths(filePaths = []) {
+  const unique = new Set(pendingOpenedFilePaths);
+  for (const filePath of filePaths.map(normalizeOpenableFilePath).filter(Boolean)) {
+    unique.add(filePath);
+  }
+  pendingOpenedFilePaths = [...unique];
+}
+
+function focusMainWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  if (mainWindow.isMinimized()) {
+    mainWindow.restore();
+  }
+  mainWindow.show();
+  mainWindow.focus();
 }
 
 function normalizeEnvSegment(value) {
@@ -363,25 +421,25 @@ function findEnvLocalPaths() {
   const candidates = [];
   const seen = new Set();
 
-  try {
-    pushEnvLocalCandidates(candidates, seen, process.cwd(), 3);
-  } catch {}
+  if (!app.isPackaged) {
+    try {
+      pushEnvLocalCandidates(candidates, seen, process.cwd(), 3);
+    } catch {}
+    try {
+      pushEnvLocalCandidates(candidates, seen, app.getAppPath(), 3);
+    } catch {}
+  }
 
   try {
     pushEnvLocalCandidates(candidates, seen, app.getPath('userData'), 1);
   } catch {}
 
   try {
-    const appPath = app.isPackaged ? path.dirname(app.getAppPath()) : app.getAppPath();
-    pushEnvLocalCandidates(candidates, seen, appPath, 3);
-  } catch {}
-
-  try {
-    pushEnvLocalCandidates(candidates, seen, path.dirname(app.getPath('exe')), 3);
+    pushEnvLocalCandidates(candidates, seen, path.dirname(app.getPath('exe')), app.isPackaged ? 0 : 3);
   } catch {}
 
   if (process.env.APPIMAGE) {
-    pushEnvLocalCandidates(candidates, seen, path.dirname(process.env.APPIMAGE), 3);
+    pushEnvLocalCandidates(candidates, seen, path.dirname(process.env.APPIMAGE), app.isPackaged ? 0 : 3);
   }
 
   return candidates.filter((filePath) => fs.existsSync(filePath));
@@ -461,6 +519,15 @@ function mergeSettings(raw) {
     return base;
   }
 
+  const mergedProviders =
+    Array.isArray(raw.aiProviders) && raw.aiProviders.length > 0
+      ? ensureSingleDefault(
+          pruneUnconfiguredSeededProviders(
+            raw.aiProviders.map((provider, index) => sanitizeProvider(provider, index, {}))
+          )
+        )
+      : base.aiProviders;
+
   return {
     ...base,
     ...raw,
@@ -468,9 +535,7 @@ function mergeSettings(raw) {
     recentFiles: Array.isArray(raw.recentFiles)
       ? raw.recentFiles.filter((item) => typeof item === 'string')
       : base.recentFiles,
-    aiProviders: Array.isArray(raw.aiProviders) && raw.aiProviders.length > 0
-      ? raw.aiProviders.map((provider, index) => sanitizeProvider(provider, index, {}))
-      : base.aiProviders,
+    aiProviders: mergedProviders,
     webSearch: sanitizeWebSearchConfig(raw.webSearch, base.webSearch),
     aiMemory: {
       enabled:
@@ -488,7 +553,11 @@ function loadStoredSettings() {
     }
 
     const raw = JSON.parse(fs.readFileSync(settingsPath(), 'utf8'));
-    return mergeSettings(raw);
+    const merged = mergeSettings(raw);
+    if (JSON.stringify(raw) !== JSON.stringify(merged)) {
+      saveSettings(merged);
+    }
+    return merged;
   } catch (error) {
     console.error('[QuietMark] Failed to load settings:', error);
     return structuredClone(DEFAULT_SETTINGS);
@@ -502,6 +571,37 @@ function loadSettings() {
 function saveSettings(settings) {
   fs.mkdirSync(path.dirname(settingsPath()), { recursive: true });
   fs.writeFileSync(settingsPath(), JSON.stringify(settings, null, 2), 'utf8');
+}
+
+function migrateLegacyUserData() {
+  const targetDir = app.getPath('userData');
+  fs.mkdirSync(targetDir, { recursive: true });
+
+  const targetSettingsPath = settingsPath();
+  const targetSessionPath = aiSessionStorePath(targetDir);
+
+  for (const legacyDir of legacyUserDataPaths()) {
+    if (!fs.existsSync(legacyDir)) continue;
+
+    const legacySettingsPath = path.join(legacyDir, 'asternote-settings.json');
+    if (!fs.existsSync(targetSettingsPath) && fs.existsSync(legacySettingsPath)) {
+      try {
+        const rawSettings = JSON.parse(fs.readFileSync(legacySettingsPath, 'utf8'));
+        saveSettings(mergeSettings(rawSettings));
+      } catch (error) {
+        console.error('[AsterNote] Failed to migrate legacy settings:', error);
+      }
+    }
+
+    const legacySessionPath = aiSessionStorePath(legacyDir);
+    if (!fs.existsSync(targetSessionPath) && fs.existsSync(legacySessionPath)) {
+      try {
+        fs.copyFileSync(legacySessionPath, targetSessionPath);
+      } catch (error) {
+        console.error('[AsterNote] Failed to migrate legacy AI sessions:', error);
+      }
+    }
+  }
 }
 
 function maskApiKey(apiKey) {
@@ -528,6 +628,20 @@ function sanitizeProvider(provider, index, previousById = {}) {
     enabled: provider?.enabled ?? previous?.enabled ?? true,
     isDefault: provider?.isDefault ?? previous?.isDefault ?? false,
   };
+}
+
+function isLegacySeededProvider(provider) {
+  const signature = LEGACY_SEEDED_PROVIDER_SIGNATURES[provider?.id];
+  if (!signature) return false;
+
+  return !provider.apiKey
+    && provider.name === signature.name
+    && provider.baseUrl === signature.baseUrl
+    && provider.model === signature.model;
+}
+
+function pruneUnconfiguredSeededProviders(providers) {
+  return providers.filter((provider) => !isLegacySeededProvider(provider));
 }
 
 function ensureSingleDefault(providers) {
@@ -560,8 +674,6 @@ function ensureSingleDefault(providers) {
 
 function settingsForRenderer(settings = loadStoredSettings()) {
   const resolved = applyExternalSecrets(settings);
-  const secrets = loadExternalSecrets();
-  const ui = getMainUi(resolved.uiLanguage);
 
   return {
     theme: resolved.theme,
@@ -570,7 +682,6 @@ function settingsForRenderer(settings = loadStoredSettings()) {
     defaultViewMode: resolved.defaultViewMode,
     recentFiles: resolved.recentFiles,
     aiProviders: resolved.aiProviders.map((provider) => {
-      const externalApiKey = resolveProviderEnvApiKey(secrets, provider.id);
       return {
         id: provider.id,
         name: provider.name,
@@ -579,16 +690,15 @@ function settingsForRenderer(settings = loadStoredSettings()) {
         enabled: provider.enabled,
         isDefault: provider.isDefault,
         hasApiKey: Boolean(provider.apiKey),
-        apiKeyMasked: externalApiKey ? ui.envLoadedKey : maskApiKey(provider.apiKey),
+        apiKeyMasked: maskApiKey(provider.apiKey),
       };
     }),
     webSearch: (() => {
-      const externalApiKey = resolveWebSearchEnvApiKey(secrets, resolved.webSearch.provider);
       const next = webSearchForRenderer(resolved.webSearch);
       return {
         ...next,
         hasApiKey: Boolean(resolved.webSearch.apiKey),
-        apiKeyMasked: externalApiKey ? ui.envLoadedKey : maskApiKey(resolved.webSearch.apiKey),
+        apiKeyMasked: maskApiKey(resolved.webSearch.apiKey),
       };
     })(),
     aiMemory: {
@@ -600,6 +710,14 @@ function settingsForRenderer(settings = loadStoredSettings()) {
 function updateStoredSettings(partial) {
   const current = loadStoredSettings();
   const previousById = Object.fromEntries(current.aiProviders.map((provider) => [provider.id, provider]));
+
+  const nextProviders = Array.isArray(partial?.aiProviders)
+    ? ensureSingleDefault(
+        pruneUnconfiguredSeededProviders(
+          partial.aiProviders.map((provider, index) => sanitizeProvider(provider, index, previousById))
+        )
+      )
+    : current.aiProviders;
 
   const next = {
     ...current,
@@ -619,11 +737,7 @@ function updateStoredSettings(partial) {
         ? 'rich'
         : current.defaultViewMode,
     recentFiles: Array.isArray(partial?.recentFiles) ? partial.recentFiles : current.recentFiles,
-    aiProviders: Array.isArray(partial?.aiProviders)
-      ? ensureSingleDefault(
-          partial.aiProviders.map((provider, index) => sanitizeProvider(provider, index, previousById))
-        )
-      : current.aiProviders,
+    aiProviders: nextProviders,
     webSearch: partial?.webSearch
       ? sanitizeWebSearchConfig(partial.webSearch, current.webSearch)
       : current.webSearch,
@@ -664,6 +778,41 @@ async function readFileEntry(filePath) {
   };
 }
 
+async function loadEntriesFromPaths(filePaths = []) {
+  const entries = [];
+
+  for (const filePath of [...new Set(filePaths.map(normalizeOpenableFilePath).filter(Boolean))]) {
+    try {
+      entries.push(await readFileEntry(filePath));
+      updateRecentFiles(filePath);
+    } catch (error) {
+      console.error('[AsterNote] Failed to open associated file:', filePath, error);
+    }
+  }
+
+  if (entries.length > 0) {
+    buildMenu();
+  }
+
+  return entries;
+}
+
+async function consumePendingOpenedEntries() {
+  const queued = pendingOpenedFilePaths;
+  pendingOpenedFilePaths = [];
+  return loadEntriesFromPaths(queued);
+}
+
+async function flushPendingOpenedFiles() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  if (mainWindow.webContents.isLoadingMainFrame()) return;
+
+  const entries = await consumePendingOpenedEntries();
+  if (entries.length > 0) {
+    mainWindow.webContents.send('quietmark:files-opened', entries);
+  }
+}
+
 async function openFilesDialog() {
   if (!mainWindow) return [];
   const ui = getMainUi();
@@ -672,7 +821,7 @@ async function openFilesDialog() {
     title: ui.openMarkdownFiles,
     properties: ['openFile', 'multiSelections'],
     filters: [
-      { name: ui.markdown, extensions: ['md', 'markdown'] },
+      { name: ui.markdown, extensions: ['md', 'markdown', 'mdown', 'mkd'] },
       { name: ui.allFiles, extensions: ['*'] },
     ],
   });
@@ -1280,7 +1429,29 @@ function createMainWindow() {
   buildMenu();
 }
 
+const hasSingleInstanceLock = app.requestSingleInstanceLock();
+
+if (!hasSingleInstanceLock) {
+  app.quit();
+} else {
+  queueOpenedFilePaths(extractMarkdownPathsFromArgv(process.argv));
+
+  app.on('second-instance', (_event, commandLine) => {
+    queueOpenedFilePaths(extractMarkdownPathsFromArgv(commandLine));
+    focusMainWindow();
+    void flushPendingOpenedFiles();
+  });
+}
+
+app.on('open-file', (event, filePath) => {
+  event.preventDefault();
+  queueOpenedFilePaths([filePath]);
+  focusMainWindow();
+  void flushPendingOpenedFiles();
+});
+
 app.whenReady().then(() => {
+  migrateLegacyUserData();
   createMainWindow();
 
   app.on('activate', () => {
@@ -1305,6 +1476,10 @@ ipcMain.handle('quietmark:files:open-path', async (_event, payload) => {
   return openFileFromPath(payload.path);
 });
 
+ipcMain.handle('quietmark:files:consume-pending-opened', async () => {
+  return consumePendingOpenedEntries();
+});
+
 ipcMain.handle('quietmark:files:write', async (_event, payload) => {
   return saveMarkdownFile(payload.path, payload.content);
 });
@@ -1314,7 +1489,7 @@ ipcMain.handle('quietmark:files:save-as', async (_event, payload) => {
   const result = await dialog.showSaveDialog(mainWindow, {
     title: ui.saveMarkdownFile,
     defaultPath: payload?.defaultPath || payload?.suggestedName || (resolveUiLanguage(loadSettings().uiLanguage) === 'zh-CN' ? '未命名.md' : 'Untitled.md'),
-    filters: [{ name: ui.markdown, extensions: ['md', 'markdown'] }],
+    filters: [{ name: ui.markdown, extensions: ['md', 'markdown', 'mdown', 'mkd'] }],
   });
 
   if (result.canceled || !result.filePath) {
