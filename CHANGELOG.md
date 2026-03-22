@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.4] - 2026-03-22
+
+### Added
+
+- Added Help menu actions for checking GitHub releases, opening release notes, and downloading the latest installer from the desktop app
+
+### Fixed
+
+- Switched the Windows terminal integration to a PTY-backed session so interactive shell input works reliably
+- Improved Windows terminal typography and color defaults for clearer CJK rendering and a more native terminal feel
+- Refined platform-aware editor font stacks so Windows text no longer renders as bold by default and bold formatting remains visible
+
 ## [0.1.3] - 2026-03-20
 
 ### Fixed

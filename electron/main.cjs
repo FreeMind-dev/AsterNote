@@ -1,8 +1,10 @@
-const { app, BrowserWindow, Menu, dialog, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, Menu, dialog, ipcMain, session, shell } = require('electron');
 const fs = require('fs');
 const fsp = require('fs/promises');
 const path = require('path');
+const packageMetadata = require('../package.json');
 const { loadAiSessionStore, saveAiSessionStore } = require('./lib/ai-session-store.cjs');
+const { createUpdateManager } = require('./lib/app-updates.cjs');
 const { TerminalManager } = require('./lib/terminal.cjs');
 const {
   buildSearchPlan,
@@ -18,6 +20,7 @@ const {
 
 const PRODUCT_NAME = 'AsterNote';
 const PRODUCT_DESCRIPTION = 'A luminous desktop Markdown editor with AI and web-assisted writing tools.';
+const PRODUCT_REPOSITORY_URL = packageMetadata?.repository?.url || packageMetadata?.homepage || '';
 const LEGACY_USER_DATA_DIR_NAMES = ['asternote'];
 
 const DEFAULT_SETTINGS = {
@@ -77,6 +80,7 @@ const QUICK_ACTION_PROMPTS = {
 
 const MAIN_UI_TEXT = {
   en: {
+    language: 'en',
     recentFilesEmpty: 'No Recent Files',
     unableToOpenFile: 'Unable to Open File',
     openMarkdownFiles: 'Open Markdown Files',
@@ -102,6 +106,35 @@ const MAIN_UI_TEXT = {
     noAiProviderConfigured: 'No AI provider is configured.',
     envLoadedKey: 'Loaded from .env.local',
     aboutTitle: `About ${PRODUCT_NAME}`,
+    updates: {
+      currentVersion: (version) => `Current version: ${version}`,
+      latestVersion: (version) => `Latest version: ${version}`,
+      publishedAt: (value) => `Published: ${value}`,
+      downloadAsset: (name, size) => `Download: ${name}${size ? ` (${size})` : ''}`,
+      noDirectDownload: 'No direct installer was found for this platform.',
+      releaseNotesLabel: 'Release notes:',
+      updateAvailableTitle: 'Update Available',
+      updateAvailableMessage: (name) => `${name} is ready to download.`,
+      downloadNow: 'Download Update',
+      openDirectDownload: 'Open Direct Download',
+      openReleasePage: 'Open Download Page',
+      later: 'Later',
+      close: 'Close',
+      upToDateTitle: 'You Are Up to Date',
+      upToDateMessage: 'AsterNote is already on the latest available version.',
+      checkFailedTitle: 'Unable to Check for Updates',
+      checkFailedMessage: 'AsterNote could not reach the release server.',
+      checkFailedFallback: 'Please try again later or open the download page manually.',
+      downloadCompleteTitle: 'Update Downloaded',
+      downloadCompleteMessage: 'The update package has been downloaded.',
+      savedTo: (filePath) => `Saved to: ${filePath}`,
+      installHint: 'Open the downloaded package to install the new version.',
+      showInFolder: 'Show in Folder',
+      downloadFailedTitle: 'Download Failed',
+      downloadFailedMessage: 'AsterNote could not finish downloading the update package.',
+      downloadFailedFallback: 'Open the download page and install the update manually.',
+      downloadFailedState: (state) => `Download ended with state: ${state}`,
+    },
     menu: {
       file: 'File',
       new: 'New',
@@ -168,10 +201,12 @@ const MAIN_UI_TEXT = {
       help: 'Help',
       quickStart: 'Quick Start',
       keyboardShortcuts: 'Keyboard Shortcuts',
+      checkForUpdates: 'Check for Updates...',
       releaseNotes: 'Release Notes',
     },
   },
   'zh-CN': {
+    language: 'zh-CN',
     recentFilesEmpty: '没有最近文件',
     unableToOpenFile: '无法打开文件',
     openMarkdownFiles: '打开 Markdown 文件',
@@ -196,6 +231,35 @@ const MAIN_UI_TEXT = {
     noAiProviderConfigured: '尚未配置可用的 AI 提供商。',
     envLoadedKey: '从 .env.local 加载',
     aboutTitle: `关于 ${PRODUCT_NAME}`,
+    updates: {
+      currentVersion: (version) => `当前版本：${version}`,
+      latestVersion: (version) => `最新版本：${version}`,
+      publishedAt: (value) => `发布时间：${value}`,
+      downloadAsset: (name, size) => `下载包：${name}${size ? `（${size}）` : ''}`,
+      noDirectDownload: '当前平台没有匹配的安装包，可打开下载页面查看。',
+      releaseNotesLabel: '发行说明：',
+      updateAvailableTitle: '发现新版本',
+      updateAvailableMessage: (name) => `${name} 可以下载了。`,
+      downloadNow: '下载更新',
+      openDirectDownload: '打开直接下载链接',
+      openReleasePage: '打开下载页面',
+      later: '稍后',
+      close: '关闭',
+      upToDateTitle: '已是最新版本',
+      upToDateMessage: 'AsterNote 当前已经是可用的最新版本。',
+      checkFailedTitle: '无法检查更新',
+      checkFailedMessage: 'AsterNote 暂时无法连接到发布服务器。',
+      checkFailedFallback: '请稍后再试，或手动打开下载页面。',
+      downloadCompleteTitle: '更新已下载',
+      downloadCompleteMessage: '更新安装包已经下载完成。',
+      savedTo: (filePath) => `保存位置：${filePath}`,
+      installHint: '打开下载好的安装包即可安装新版本。',
+      showInFolder: '在文件夹中显示',
+      downloadFailedTitle: '下载失败',
+      downloadFailedMessage: 'AsterNote 未能完成更新包下载。',
+      downloadFailedFallback: '请打开下载页面手动下载安装。',
+      downloadFailedState: (state) => `下载结束状态：${state}`,
+    },
     menu: {
       file: '文件',
       new: '新建',
@@ -262,6 +326,7 @@ const MAIN_UI_TEXT = {
       help: '帮助',
       quickStart: '快速开始',
       keyboardShortcuts: '快捷键',
+      checkForUpdates: '检查更新...',
       releaseNotes: '发行说明',
     },
   },
@@ -305,6 +370,16 @@ const terminalManager = new TerminalManager({
     if (!mainWindow || mainWindow.isDestroyed()) return;
     mainWindow.webContents.send('quietmark:terminal:exit', payload);
   },
+});
+const updateManager = createUpdateManager({
+  app,
+  dialog,
+  electronSession: session,
+  getMainWindow: () => mainWindow,
+  getUi: () => getMainUi(),
+  productName: PRODUCT_NAME,
+  repositoryUrl: PRODUCT_REPOSITORY_URL,
+  shell,
 });
 
 function settingsPath() {
@@ -1378,7 +1453,17 @@ function buildMenu() {
       submenu: [
         { label: ui.menu.quickStart, click: () => sendCommand('help:quick-start') },
         { label: ui.menu.keyboardShortcuts, click: () => sendCommand('help:shortcuts') },
-        { label: ui.menu.releaseNotes, enabled: false },
+        { type: 'separator' },
+        {
+          label: ui.menu.checkForUpdates,
+          enabled: updateManager.hasReleaseFeed(),
+          click: () => void updateManager.checkForUpdates(),
+        },
+        {
+          label: ui.menu.releaseNotes,
+          enabled: updateManager.hasReleaseFeed(),
+          click: () => void updateManager.openReleaseNotes(),
+        },
         { type: 'separator' },
         {
           label: ui.aboutTitle,

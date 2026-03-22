@@ -9,6 +9,33 @@
   --accent: #20596c;
   --accent-soft: rgba(32, 89, 108, 0.12);
   --danger: #a24139;
+  --qm-editor-body-font:
+    'Source Han Serif SC',
+    'Noto Serif CJK SC',
+    'Songti SC',
+    'STSong',
+    'Iowan Old Style',
+    'Palatino Linotype',
+    Georgia,
+    serif;
+  --qm-editor-heading-font:
+    'PingFang SC',
+    'Noto Sans CJK SC',
+    'Microsoft YaHei',
+    'Avenir Next',
+    'Segoe UI',
+    sans-serif;
+  --qm-editor-em-font:
+    'Kaiti SC',
+    'STKaiti',
+    'KaiTi',
+    'Source Han Serif SC',
+    'Noto Serif CJK SC',
+    serif;
+  --qm-editor-em-style: oblique 12deg;
+  --qm-editor-em-display: inline-block;
+  --qm-editor-em-transform: skewX(-10deg);
+  --qm-editor-mono-font: 'SFMono-Regular', Consolas, monospace;
   color: var(--ink);
   background:
     radial-gradient(circle at top left, #fffaf2 0, transparent 42%),
@@ -36,6 +63,47 @@
   background:
     radial-gradient(circle at top left, #16202a 0, transparent 42%),
     linear-gradient(180deg, #11181f 0%, #090d11 100%);
+}
+
+:root[data-platform='windows'] {
+  --qm-editor-body-font:
+    'Microsoft YaHei UI',
+    'Microsoft YaHei',
+    'Segoe UI',
+    'Noto Sans CJK SC',
+    sans-serif;
+  --qm-editor-heading-font:
+    'Microsoft YaHei UI',
+    'Microsoft YaHei',
+    'Segoe UI',
+    sans-serif;
+  --qm-editor-em-font:
+    'Microsoft YaHei UI',
+    'Microsoft YaHei',
+    'Segoe UI',
+    sans-serif;
+  --qm-editor-em-style: italic;
+  --qm-editor-em-display: inline;
+  --qm-editor-em-transform: none;
+  --qm-editor-mono-font:
+    'Cascadia Mono',
+    'Cascadia Code',
+    Consolas,
+    'Lucida Console',
+    'Sarasa Mono SC',
+    'Noto Sans Mono CJK SC',
+    'NSimSun',
+    monospace;
+}
+
+:root[data-platform='linux'] {
+  --qm-editor-mono-font:
+    'JetBrains Mono',
+    'Noto Sans Mono',
+    'Noto Sans Mono CJK SC',
+    'Sarasa Mono SC',
+    'Liberation Mono',
+    monospace;
 }
 
 * {
@@ -417,7 +485,7 @@ button {
   background: rgba(255, 255, 255, 0.42);
   color: var(--ink);
   line-height: 1.8;
-  font-family: 'SFMono-Regular', Consolas, monospace;
+  font-family: var(--qm-editor-mono-font);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   word-break: break-word;
@@ -436,16 +504,9 @@ button {
   padding: 2.1rem 2.4rem 5rem;
   border-radius: 1.4rem;
   background: rgba(255, 255, 255, 0.38);
-  font-family:
-    'Source Han Serif SC',
-    'Noto Serif CJK SC',
-    'Songti SC',
-    'STSong',
-    'Iowan Old Style',
-    'Palatino Linotype',
-    Georgia,
-    serif;
-  font-synthesis: weight style;
+  font-family: var(--qm-editor-body-font);
+  font-weight: 400;
+  font-synthesis: style;
   line-height: 1.85;
   white-space: normal;
   overflow-wrap: anywhere;
@@ -468,14 +529,9 @@ button {
 .qm-editor-surface h1,
 .qm-editor-surface h2,
 .qm-editor-surface h3 {
-  font-family:
-    'PingFang SC',
-    'Noto Sans CJK SC',
-    'Microsoft YaHei',
-    'Avenir Next',
-    'Segoe UI',
-    sans-serif;
-  font-synthesis: weight style;
+  font-family: var(--qm-editor-heading-font);
+  font-weight: 700;
+  font-synthesis: style;
   line-height: 1.18;
   letter-spacing: -0.02em;
 }
@@ -483,15 +539,13 @@ button {
 .qm-editor-surface p,
 .qm-editor-surface li,
 .qm-editor-surface blockquote,
-.qm-editor-surface h1,
-.qm-editor-surface h2,
-.qm-editor-surface h3,
 .qm-editor-surface h4,
 .qm-editor-surface h5,
 .qm-editor-surface h6 {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   word-break: break-word;
+  font-weight: 400;
 }
 
 .qm-editor-surface strong {
@@ -499,16 +553,10 @@ button {
 }
 
 .qm-editor-surface em {
-  font-family:
-    'Kaiti SC',
-    'STKaiti',
-    'KaiTi',
-    'Source Han Serif SC',
-    'Noto Serif CJK SC',
-    serif;
-  font-style: oblique 12deg;
-  display: inline-block;
-  transform: skewX(-10deg);
+  font-family: var(--qm-editor-em-font);
+  font-style: var(--qm-editor-em-style);
+  display: var(--qm-editor-em-display);
+  transform: var(--qm-editor-em-transform);
   transform-origin: bottom center;
 }
 

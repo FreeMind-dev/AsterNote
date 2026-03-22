@@ -209,6 +209,16 @@ function buildDraftExcerpt(markdown: string, selectedText: string, action: AIMes
   return markdown.slice(0, 4000);
 }
 
+function resolvePlatformKey() {
+  if (typeof navigator === 'undefined') return 'unknown';
+
+  const userAgent = navigator.userAgent;
+  if (/Windows/i.test(userAgent)) return 'windows';
+  if (/Macintosh|Mac OS X/i.test(userAgent)) return 'mac';
+  if (/Linux/i.test(userAgent)) return 'linux';
+  return 'unknown';
+}
+
 type InsertDialogState = {
   kind: 'link';
   title: string;
@@ -1661,6 +1671,7 @@ function App() {
   useEffect(() => {
     document.documentElement.dataset.theme = settings?.theme || DEFAULT_SETTINGS_FALLBACK.theme;
     document.documentElement.dataset.uiLanguage = uiLanguage;
+    document.documentElement.dataset.platform = resolvePlatformKey();
     document.documentElement.lang = uiLanguage === 'zh-CN' ? 'zh-CN' : 'en';
   }, [settings, uiLanguage]);
 
